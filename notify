@@ -1,0 +1,177 @@
+#!/usr/bin/env python
+
+from __future__ import with_statement
+import os, sys, argparse, getpass
+
+DEV_NULL = open(os.devnull, 'w')
+#STDOUT_ORIG = sys.stdout
+STDERR_ORIG = sys.stderr
+
+sys.stderr = DEV_NULL
+
+# Import Fabric's API module
+from fabric.api import *
+from fabric.tasks import execute
+from fabric.contrib.console import confirm
+
+sys.stderr = STDERR_ORIG
+
+# Fabfile to:
+#    - update the remote system(s) 
+#    - download and install an application
+
+env.skip_bad_hosts = True
+env.eagerly_disconnect = True
+env.colorize_errors = True
+env.forward_agent = True
+#env.abort_on_prompts = True
+
+'''
+env.hosts = [
+    '172.16.15.201',
+    '172.16.15.202',
+    '172.16.15.203',
+    '172.16.15.204',
+    '172.16.15.205',
+    '172.16.15.206',
+    '172.16.15.207',
+    '172.16.15.208',
+    '172.16.15.209',
+    '172.16.15.210',
+    '172.16.15.211',
+    '172.16.15.212',
+    '172.16.15.213',
+    '172.16.15.214',
+    '172.16.15.215',
+]
+'''
+
+all_hosts = {
+# Lighters    
+'172.16.15.201' : 'junaid',
+'172.16.15.202' : 'mayur',
+'172.16.15.203' : 'tabrez',
+'172.16.15.204' : 'ravi',
+'172.16.15.205' : 'ronak',
+'172.16.15.206' : 'inki',
+'172.16.15.207' : 'ashish',
+'172.16.15.208' : 'midhun',
+'172.16.15.209' : 'ramesh',
+'172.16.15.210' : 'hassan',
+'172.16.15.211' : 'ashwin',
+'172.16.15.212' : 'subash',
+'172.16.15.213' : 'yugandhar',
+'172.16.15.214' : 'sivakumar',
+'172.16.15.215' : 'caine',
+'172.16.15.246' : 'abhishek',
+}
+'''
+# Pipe
+'172.16.15.246' : 'abhishek',
+'172.16.15.241' : 'domingos',
+'172.16.15.133' : 'belal',
+# Render
+'172.16.15.221' : 'anshul',
+# Anim
+'172.16.15.224' : 'anirudh',
+'172.16.15.226' : 'saumik',
+'172.16.15.237' : 'girish',
+'172.16.15.234' : 'jayesh',
+'172.16.15.238' : 'sagar',
+'172.16.15.224' : 'laurento',
+# Riggers
+'172.16.15.239' : 'subbu',
+'172.16.15.232' : 'rituparna',
+'172.16.15.247' : 'shimjith',
+# CFX
+'172.16.15.229' : 'srini',
+'172.16.15.228' : 'renjith',
+'172.16.15.231' : 'rajeev',
+# FX
+'172.16.15.235' : 'alwin',
+'172.16.15.242' : 'sameer',
+# Comp
+'172.16.15.244' : 'deva',
+'172.16.15.245' : 'renat',
+# General
+'172.16.15.233' : 'ajdin',
+'172.16.15.243' : 'koushik',
+# Environment
+'172.16.15.225' : 'eyad',
+'172.16.15.223' : 'prashanth',
+'172.16.15.222' : 'enrique',
+'172.16.15.240' : 'oliver',
+#    '172.16.15.214',
+#    '172.16.15.215',
+  # 'ip.add.rr.ess
+  # 'server2.domain.tld',
+'''  
+
+# Set the username
+env.user   = "root"
+env.password = "centos6"
+
+notify_hosts = []
+notify_users = []
+
+@parallel(pool_size=10)
+def users_to_notify(users):
+    global notify_hosts, notify_users
+    if users == 'all':
+        notify_users=all_hosts.values()
+        notify_hosts=all_hosts
+    else:
+        notify_users=filter(lambda x: x in users,  all_hosts.values())
+        notify_hosts=[host for host in all_hosts if all_hosts[host] in notify_users]
+
+    #print >>sys.stderr, notify_hosts, notify_users
+    env.hosts = notify_hosts
+        
+@parallel(pool_size=10)
+def notify(message):
+    current_host = env.host_string
+    current_user = all_hosts[current_host]
+    
+    cmd = "su {0} -c 'DISPLAY=:0 kdialog --title \"{2} says ...\" --sorry \"{1}\" &'".format(current_user, message, getpass.getuser().title())
+    #print >>sys.stderr, current_host, current_user, cmd
+
+    with settings(warn_only=True):
+        run(cmd)
+
+def main(argv):
+    users = ''
+    message = ''
+
+    parser = argparse.ArgumentParser(description='Notify users')
+    parser.add_argument('-u', action="store", dest="users", default='all', type=str)    
+    parser.add_argument('-m', action="store", dest="message", default='This is a test message', type=str)
+
+    results = parser.parse_args()
+
+    users = results.users
+    message = results.message
+
+    ''' 
+    try:
+        opts, args = getopt.getopt(argv,"hu:m:",["users=","message="])
+    except getopt.GetoptError:
+        print 'notify -u <users> -m <message>'
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print 'notify -u <users> -m <message>'
+            sys.exit()
+        elif opt in ("-u", "--users"):
+            users = arg
+        elif opt in ("-m", "--message"):
+           message = arg
+    '''
+
+    #print 'Users are ', users
+    #print 'Message is ', message
+    
+    execute(users_to_notify, users)
+    execute(notify, message)
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
